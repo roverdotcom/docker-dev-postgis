@@ -16,15 +16,22 @@ if [ ! -d $POSTGRESQL_DATA ]; then
     mkdir -p $POSTGRESQL_DATA
     chown -R postgres:postgres $POSTGRESQL_DATA
     sudo -u postgres /usr/lib/postgresql/9.3/bin/initdb -D $POSTGRESQL_DATA
+fi
+if [ ! -f $POSTGRESQL_DATA/server.crt ]; then
     ln -s /etc/ssl/certs/ssl-cert-snakeoil.pem $POSTGRESQL_DATA/server.crt
+fi
+if [ ! -f $POSTGRESQL_DATA/server.key ]; then
     ln -s /etc/ssl/private/ssl-cert-snakeoil.key $POSTGRESQL_DATA/server.key
 fi
 
 $POSTGRESQL_SINGLE <<< "CREATE USER $POSTGRESQL_USER WITH SUPERUSER;" > /dev/null
 $POSTGRESQL_SINGLE <<< "ALTER USER $POSTGRESQL_USER WITH PASSWORD '$POSTGRESQL_PASS';" > /dev/null
 $POSTGRESQL_SINGLE <<< "CREATE DATABASE $POSTGRESQL_DB OWNER $POSTGRESQL_USER TEMPLATE $POSTGRESQL_TEMPLATE;" > /dev/null
-$POSTGRESQL_SINGLE <<< "CREATE EXTENSION IF NOT EXISTS postgis;" > /dev/null
-$POSTGRESQL_SINGLE <<< "CREATE EXTENSION IF NOT EXISTS postgis_topology;" > /dev/null
-$POSTGRESQL_SINGLE <<< "CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;" > /dev/null
+service postgresql start
+psql -U$POSTGRESQL_USER $POSTGRESQL_DB -c "CREATE EXTENSION IF NOT EXISTS postgis;" > /dev/null
+psql -U$POSTGRESQL_USER $POSTGRESQL_DB -c "CREATE EXTENSION IF NOT EXISTS postgis_topology;" > /dev/null
+psql -U$POSTGRESQL_USER $POSTGRESQL_DB -c "CREATE EXTENSION IF NOT EXISTS fuzzystrmatch;" > /dev/null
+psql -U$POSTGRESQL_USER $POSTGRESQL_DB -c "CREATE EXTENSION IF NOT EXISTS postgis_tiger_geocoder;" > /dev/null
+service postgresql stop
 
 exec sudo -u postgres $POSTGRESQL_BIN --config-file=$POSTGRESQL_CONFIG_FILE
